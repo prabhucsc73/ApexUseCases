@@ -1,0 +1,36 @@
+trigger updateAccount on Contact (after insert, after update, after delete, after undelete) {
+	set<Id> accountIds = new set<ID>();
+    switch on trigger.operationType {
+        when AFTER_INSERT, AFTER_UNDELETE {
+            for(Contact c : trigger.new) {
+        		accountIds.add(c.AccountId);
+    		}
+        }
+        when AFTER_UPDATE {
+            for(Contact c : trigger.new) {
+                Contact oldC = trigger.oldMap.get(c.Id);
+                if(oldC.AccountId!=c.AccountId) {
+                    accountIds.add(oldC.AccountId);
+                }
+                accountIds.add(c.AccountId);
+            }
+        }
+         when AFTER_DELETE {
+            for(Contact c : trigger.old) {
+        		accountIds.add(c.AccountId);
+    		}
+        }
+        when else {
+       		System.debug('default');
+   		}
+    }
+    
+    if(accountIds.size()>0) {
+        List<Account> accList = [SELECT Id, Name, (SELECT Id from contacts) FROM Account WHERE Id IN : accountIds];
+        for(Account a : accList) {
+            a.NumContacts__c = a.contacts.size();
+        } 
+        update accList;
+    }
+    
+}
